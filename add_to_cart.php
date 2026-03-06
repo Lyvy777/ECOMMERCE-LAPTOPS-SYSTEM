@@ -1,6 +1,7 @@
 <?php
 session_start();
 require 'db.php';
+
 if (!isset($_POST['laptop_id']) || !isset($_POST['quantity'])) {
     die("Invalid request.");
 }
@@ -11,15 +12,22 @@ $quantity = intval($_POST['quantity']);
 if ($quantity < 1) {
     $quantity = 1;
 }
-$query = $conn->query("SELECT * FROM laptops WHERE id = $laptop_id");
-$laptop = $query->fetch_assoc();
+
+$stmt = $conn->prepare("SELECT name FROM laptops WHERE id = ?");
+$stmt->bind_param("i", $laptop_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$laptop = $result->fetch_assoc();
+$stmt->close();
 
 if (!$laptop) {
     die("Laptop not found.");
 }
+
 if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = [];
 }
+
 $found = false;
 foreach ($_SESSION['cart'] as &$item) {
     if ($item['id'] == $laptop_id) {
@@ -36,6 +44,7 @@ if (!$found) {
         'quantity' => $quantity
     ];
 }
+
 header("Location: cart.php");
 exit;
 ?>
