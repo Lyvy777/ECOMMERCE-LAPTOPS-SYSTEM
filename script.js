@@ -1,4 +1,3 @@
-
 document.addEventListener("DOMContentLoaded", function () {
   function showToast(message) {
     var toast = document.querySelector(".toast");
@@ -19,12 +18,13 @@ document.addEventListener("DOMContentLoaded", function () {
       toast.classList.remove("show");
     }, 2200);
   }
+
   function pulseCartBadge() {
     var badge = document.getElementById("cartCount");
     if (!badge) return;
 
     badge.classList.remove("pulse");
-    void badge.offsetWidth; // force reflow
+    void badge.offsetWidth; 
     badge.classList.add("pulse");
   }
 
@@ -39,9 +39,6 @@ document.addEventListener("DOMContentLoaded", function () {
         showToast("❗ Enter a valid quantity (at least 1).");
         return;
       }
-
-      showToast("Item added to cart.");
-      pulseCartBadge();
     });
   });
 
@@ -99,6 +96,7 @@ document.addEventListener("DOMContentLoaded", function () {
         e.preventDefault();
         if (errorDiv) {
           errorDiv.textContent = errorMsg;
+          errorDiv.style.display = "block";
         } else {
           showToast(errorMsg);
         }
@@ -107,6 +105,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   }
+
   var productCards = document.querySelectorAll(".product-card");
   if (productCards.length > 0) {
     var randomIndex = Math.floor(Math.random() * productCards.length);
