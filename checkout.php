@@ -7,56 +7,59 @@ if (!isset($_SESSION['cart']) || empty($_SESSION['cart'])) {
 }
 
 $cart = $_SESSION['cart'];
-
-// calculate total
 $total = 0;
+
+$stmt = $conn->prepare("SELECT price FROM laptops WHERE id = ?");
 foreach ($cart as $item) {
-    $laptopId = $item['id'];
-    $qty = $item['quantity'];
+    $laptopId = intval($item['id']);
+    $qty = intval($item['quantity']);
 
-    $query = $conn->query("SELECT price FROM laptops WHERE id = $laptopId");
-    $row = $query->fetch_assoc();
-    $price = $row['price'];
-
-    $total += ($price * $qty);
+    $stmt->bind_param("i", $laptopId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    if ($row = $res->fetch_assoc()) {
+        $total += ($row['price'] * $qty);
+    }
 }
+$stmt->close();
 
 $success = "";
 $error = "";
 
-// Handle checkout form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name  = trim($_POST['name']);
-    $email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
+    $name  = trim($_POST['name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
 
     if ($name === "" || $email === "" || $phone === "") {
         $error = "Please fill in all fields.";
     } else {
-        // Insert order
         $stmt = $conn->prepare("INSERT INTO orders (user_id, total_amount) VALUES (1, ?)");
         $stmt->bind_param("d", $total);
         $stmt->execute();
         $orderId = $stmt->insert_id;
         $stmt->close();
 
-        // Insert order items
         $itemStmt = $conn->prepare("INSERT INTO order_items (order_id, laptop_id, quantity, unit_price) VALUES (?, ?, ?, ?)");
+        $priceStmt = $conn->prepare("SELECT price FROM laptops WHERE id = ?");
+        
         foreach ($cart as $item) {
-            $laptopId = $item['id'];
-            $qty = $item['quantity'];
+            $laptopId = intval($item['id']);
+            $qty = intval($item['quantity']);
 
-            $q = $conn->query("SELECT price FROM laptops WHERE id = $laptopId");
-            $row = $q->fetch_assoc();
-            $price = $row['price'];
-
-            $itemStmt->bind_param("iiid", $orderId, $laptopId, $qty, $price);
-            $itemStmt->execute();
+            $priceStmt->bind_param("i", $laptopId);
+            $priceStmt->execute();
+            $pRes = $priceStmt->get_result();
+            if ($row = $pRes->fetch_assoc()) {
+                $price = $row['price'];
+                $itemStmt->bind_param("iiid", $orderId, $laptopId, $qty, $price);
+                $itemStmt->execute();
+            }
         }
+        $priceStmt->close();
         $itemStmt->close();
 
-        $_SESSION['cart'] = []; // clear cart
-
+        $_SESSION['cart'] = []; 
         $success = "Order placed successfully! Order ID: #" . $orderId;
     }
 }
@@ -94,31 +97,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </p>
 
   <?php if ($success): ?>
-      <p class="success"><?php echo $success; ?></p>
+      <p class="success"><?php echo htmlspecialchars($success); ?></p>
       <a href="products.php" class="btn">Continue Shopping</a>
-
   <?php else: ?>
 
     <?php if ($error): ?>
-      <p class="error"><?php echo $error; ?></p>
+      <p class="error"><?php echo htmlspecialchars($error); ?></p>
     <?php endif; ?>
 
-    <div id="checkoutError" class="error"></div>
+    <div id="checkoutError" class="error" style="display:none;"></div>
 
     <form id="checkoutForm" method="post" style="max-width:400px; margin-top:20px;">
       <div class="form-group">
         <label>Full Name</label>
-        <input type="text" id="name" name="name">
+        <input type="text" id="name" name="name" required>
       </div>
 
       <div class="form-group">
         <label>Email Address</label>
-        <input type="email" id="email" name="email">
+        <input type="email" id="email" name="email" required>
       </div>
 
       <div class="form-group">
         <label>Phone Number</label>
-        <input type="text" id="phone" name="phone">
+        <input type="text" id="phone" name="phone" required>
       </div>
 
       <button type="submit" class="btn">Place Order</button>
